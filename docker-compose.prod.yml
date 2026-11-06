@@ -1,0 +1,82 @@
+services:
+  backend:
+    image: ghcr.io/ayubazmi/vegah-task/backend:latest
+    container_name: taskflow-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      - DB_HOST=db
+      - REDIS_HOST=redis
+      - CORS_ORIGIN=http://18.220.24.184:3000
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - taskflow-network
+
+  worker:
+    image: ghcr.io/ayubazmi/vegah-task/worker:latest
+    container_name: taskflow-worker
+    env_file:
+      - ./worker/.env
+    environment:
+      - DB_HOST=db
+      - REDIS_HOST=redis
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - taskflow-network
+
+  frontend:
+    image: ghcr.io/ayubazmi/vegah-task/frontend:latest
+    container_name: taskflow-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - taskflow-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: taskflow-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: taskflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d taskflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taskflow-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: taskflow-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taskflow-network
+
+volumes:
+  pgdata:
+
+networks:
+  taskflow-network:
+    driver: bridge
