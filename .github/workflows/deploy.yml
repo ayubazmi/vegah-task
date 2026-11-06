@@ -27,6 +27,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Backend Build & Push
       - name: Build and push Backend
         uses: docker/build-push-action@v5
         with:
@@ -36,6 +37,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:latest
 
+      # Worker Build & Push
       - name: Build and push Worker
         uses: docker/build-push-action@v5
         with:
@@ -45,6 +47,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker:latest
 
+      # Frontend Build & Push
       - name: Build and push Frontend
         uses: docker/build-push-action@v5
         with:
@@ -67,10 +70,24 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ubuntu/taskflow/taskflow
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # 1. Agar folder nahi hai, toh automatically clone karega
+            if [ ! -d "/home/ubuntu/taskflow" ]; then
+              git clone https://github.com/${{ github.repository }}.git /home/ubuntu/taskflow
+            fi
+            
+            # 2. Folder me jao aur latest code pull karo
+            cd /home/ubuntu/taskflow
             git fetch origin main
             git reset --hard origin/main
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml down
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+            
+            # 3. Safe folder se .env files copy karo
+            cp /home/ubuntu/envs/backend.env ./backend/.env
+            cp /home/ubuntu/envs/worker.env ./worker/.env
+            
+            # 4. GHCR me login karo
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # 5. Docker Compose down, pull, aur up (without build)
+            sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+            sudo docker compose -f docker-compose.prod.yml pull
+            sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
