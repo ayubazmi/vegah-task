@@ -91,13 +91,14 @@ jobs:
           
             SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id taskflow/prod/secrets --query SecretString --output text)
             
+            echo "$SECRET_JSON" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' > ./.env
            
             echo "$SECRET_JSON" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' > ./backend/.env
             echo "$SECRET_JSON" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' > ./worker/.env
             
             echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
-            # 7. Docker Compose down, pull, aur up (without build)
+           
             sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml down
             sudo docker compose -f docker-compose.prod.yml pull
             sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
