@@ -1,6 +1,6 @@
 # Dispatch Board — Next.js + NestJS + PostgreSQL + Redis (BullMQ)
 
-## Flow (ek parcel ki journey)
+## Flow (ek parcel ki journey).
 
 ```
 Browser (Next.js :3000)
