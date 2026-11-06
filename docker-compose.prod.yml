@@ -5,9 +5,10 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      - DB_HOST=db
-      - REDIS_HOST=redis
-      - CORS_ORIGIN=http://18.220.24.184:3000
+      - DB_HOST=${DB_HOST}
+      - REDIS_HOST=${REDIS_HOST}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - PORT=${PORT}
     ports:
       - "4000:4000"
     depends_on:
@@ -24,8 +25,8 @@ services:
     env_file:
       - ./worker/.env
     environment:
-      - DB_HOST=db
-      - REDIS_HOST=redis
+      - DB_HOST=${DB_HOST}
+      - REDIS_HOST=${REDIS_HOST}
     depends_on:
       db:
         condition: service_healthy
@@ -50,13 +51,13 @@ services:
     image: postgres:16-alpine
     container_name: taskflow-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: taskflow
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d taskflow"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
