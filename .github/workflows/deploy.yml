@@ -75,19 +75,29 @@ jobs:
               git clone https://github.com/${{ github.repository }}.git /home/ubuntu/taskflow
             fi
             
-            # 2. Folder me jao aur latest code pull karo
+          
             cd /home/ubuntu/taskflow
             git fetch origin main
             git reset --hard origin/main
             
-            # 3. Safe folder se .env files copy karo
-            cp /home/ubuntu/envs/backend.env ./backend/.env
-            cp /home/ubuntu/envs/worker.env ./worker/.env
+           
+            if ! command -v aws &> /dev/null; then
+              sudo apt-get update && sudo apt-get install -y awscli
+            fi
+            if ! command -v jq &> /dev/null; then
+              sudo apt-get install -y jq
+            fi
             
-            # 4. GHCR me login karo
+          
+            SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id taskflow/prod/secrets --query SecretString --output text)
+            
+           
+            echo "$SECRET_JSON" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' > ./backend/.env
+            echo "$SECRET_JSON" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' > ./worker/.env
+            
             echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
-            # 5. Docker Compose down, pull, aur up (without build)
+            # 7. Docker Compose down, pull, aur up (without build)
             sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml down
             sudo docker compose -f docker-compose.prod.yml pull
             sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
